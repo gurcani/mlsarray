@@ -54,14 +54,14 @@ class gensolver:
             print(kwargs)
             self.r=DOP853(f,t0,y0,t1,max_step=dtstep,**kwargs)
         if solver=='cupy_ivp.DOP853':
-            from cupy_ivp import DOP853
+            from .cupy_ivp import DOP853
             print(kwargs)
             self.r=DOP853(f,t0,y0,t1,max_step=dtstep,**kwargs)
         elif solver=='scipy.RK45':
             from scipy.integrate import RK45
             self.r=RK45(f,t0,y0,t1,max_step=dtstep,**kwargs)
         elif solver=='cupy_ivp.RK45':
-            from cupy_ivp import RK45
+            from .cupy_ivp import RK45
             self.r=RK45(f,t0,y0,t1,max_step=dtstep,**kwargs)
         elif solver=='scipy.vode':
             from scipy.integrate import ode
