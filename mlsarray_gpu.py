@@ -6,30 +6,8 @@ Created on Tue Apr 16 16:28:38 2024
 @author: ogurcan
 """
 import numpy as np
-import scipy.fft as scifft
-#from cupyx.scipy.fft import rfft2,irfft2,fft,ifft
-from scipy.fft import rfft2,irfft2,fft,ifft
-xp = np
-backend="numpy"
-
-def set_backend(bke):
-    global xp,backend
-    try:
-        import cupy as cp
-        CUPY_AVAILABLE = True
-    except ImportError:
-        CUPY_AVAILABLE = False
-    if bke == "cupy" and CUPY_AVAILABLE:
-        xp=cp
-        backend=bke
-        from cupyx.scipy.fft import rfft2,irfft2,fft,ifft
-#        fftbe=cfft
-    elif bke == "numpy":
-        xp=np
-        backend=bke
-        from scipy.fft import rfft2,irfft2,fft,ifft
-    else:
-        raise ValueError(f"Unknown or unavailable backend: {bke}")
+import cupy as xp
+from cupyx.scipy.fft import rfft2,irfft2,fft,ifft
 
 class slicelist:
     def __init__(self,Nx,Ny):
