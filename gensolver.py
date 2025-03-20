@@ -85,12 +85,12 @@ class gensolver:
                 if CUPY_ARRAY:
                     jl.fsave=[lambda r : fsave(r.t,self.jltocp(r.u,y0)),]
                 else:
-                    jl.fsave=[lambda r : fsave(r.t,np.array(r.u,copy=False)),]                
+                    jl.fsave=[lambda r : fsave(r.t,np.array(r.u,copy=False)),]
             else:
                 if CUPY_ARRAY:
-                    jl.fsave=[ lambda r : f(r.t,self.jltocp(r.u,y0)) for f in fsave]
+                    jl.fsave=[ lambda r,f=f : f(r.t,self.jltocp(r.u,y0)) for f in fsave]
                 else:
-                    jl.fsave=[ lambda r : f(r.t,np.array(r.u,copy=False)) for f in fsave]
+                    jl.fsave=[ lambda r,f=f : f(r.t,np.array(r.u,copy=False)) for f in fsave]
             if CUPY_ARRAY:
                 jl.fshow = lambda r : fshow(r.t,self.jltocp(r.u,y0))
             else:
@@ -100,6 +100,7 @@ class gensolver:
             if CUPY_ARRAY:
                 jl.y0_ptr=y0.data.ptr
                 jl.seval("""
+                    ENV["LD_LIBRARY_PATH"]=""
                     using CUDA
                     y0_p=CuPtr{ComplexF64}(pyconvert(UInt, y0_ptr))
                     """)
@@ -116,12 +117,11 @@ class gensolver:
             jl.tspan=(t0,t1)
             jl.py_kwargs=kwargs
             jl.svtype=jl.seval(svs[1])
+
             jl.seval("""
-                cbshow = PeriodicCallback(fshow,dtshow)
-                global cbs=CallbackSet(cbshow)
-                for l in range(1,length(fsave))
-                    global cbs=CallbackSet(cbs,PeriodicCallback(fsave[l],dtsave[l]))
-                end
+                cbshow = PeriodicCallback(fshow,dtshow)                
+                cbls=vcat([cbshow],[PeriodicCallback(fsave[l],dtsave[l]) for l in range(1,length(fsave))])
+                cbs=CallbackSet(cbls...)
                 tmpdict = Dict{String, Any}(py_kwargs)
                 kwdict = Dict()
                 for (k,v) in tmpdict
@@ -167,7 +167,7 @@ class gensolver:
             if(callable(fsave)):
                 self.fsave=[lambda t,y : fsave(t.get() if CUPY_ARRAY else t,y) ,]
             else:
-                self.fsave=[lambda t,y : fl(t.get() if CUPY_ARRAY else t,y) for fl in fsave]
+                self.fsave=[lambda t,y,fl=fl : fl( (t.get() if CUPY_ARRAY else t),y) for fl in fsave]
         self.dtstep,self.dtshow,self.dtsave=dtstep,dtshow,dtsave
         self.t0,self.t1=t0,t1
         if(not(fy is None) and not(force_update is None)):
@@ -184,8 +184,6 @@ class gensolver:
         mem = self.cp.cuda.UnownedMemory(p,zk.nbytes, None)
         memptr = self.cp.cuda.MemoryPointer(mem, 0)
         vk=self.cp.ndarray(zk.shape,dtype=zk.dtype,memptr=memptr)
-#        print(hex(p),':',hex(vk.data.ptr))
-        
         return vk
 
     def run_julia(self):
@@ -218,7 +216,6 @@ class gensolver:
                     tnextfupdate=round(tnextfupdate+dtfupdate,trnd)
                     self.force_update(self.fy,t)
             if(r.t>=tshownext):
-#                print('t='+str(t)+', '+str(time()-self.ct)+" secs elapsed." , end='')
                 if(callable(self.fshow)):
                     self.fshow(r.t,r.y)
                 else:

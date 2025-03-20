@@ -21,9 +21,8 @@ from gensolver import gensolver,save_data
 import h5py as h5
 xp=cp
 
-#Npx,Npy=2048,2048
-Npx,Npy=2048,2048
-t0,t1=0,400
+Npx,Npy=1024,1024
+t0,t1=0,500.0
 dtstep,dtshow,dtsave=0.1,0.1,1.0
 wecontinue=False
 Nx,Ny=2*int(np.floor(Npx/3)),2*int(np.floor(Npy/3))
@@ -39,7 +38,7 @@ zk0=xp.hstack((phik,nk))
 xl,yl=np.arange(0,Lx,Lx/Npx),np.arange(0,Ly,Ly/Npy)
 x,y=np.meshgrid(np.array(xl),np.array(yl),indexing='ij')
 kap=1.0
-C=1.0
+C=20.0
 nu=1e-5
 D=1e-5
 u=mlsarray(Npx,Npy)
@@ -57,11 +56,20 @@ def rft(u):
     uk=rfft2(u,norm='forward',overwrite_x=True).view(type=mlsarray)
     return np.hstack(uk[sl])
 
-def save_callback(fl,t,zk):
+def save_callback(fl,t,zk,flag):
     phik,nk=zk[:int(zk.size/2)],zk[int(zk.size/2):]
-    om=irft(-phik*(kx**2+ky**2))
-    n=irft(nk)
-    save_data(fl,'fields',ext_flag=True,om=om.get(),n=n.get(),t=t)
+    if flag=='fields':
+        print('saving fields')
+        om=irft(-phik*(kx**2+ky**2))
+        n=irft(nk)
+        save_data(fl,'fields',ext_flag=True,om=om.get(),n=n.get(),t=t)
+    if flag=='energies':
+        print('saving energies')
+        Etot=xp.sum(xp.abs(phik)**2*(kx**2+ky**2))
+        Ez=xp.sum(xp.abs(phik)**2*(kx**2+ky**2)*(ky==0))
+        Ftot=xp.sum(xp.abs(nk)**2)
+        Fz=xp.sum(xp.abs(nk**2)*(ky==0))
+        save_data(fl,'energies',ext_flag=True,Etot=Etot.get(),Ez=Ez.get(),Ftot=Ftot.get(),Fz=Fz.get(),t=t)
 
 def rhs(dzkdt,zk,t):
     phik,nk=zk[:int(zk.size/2)],zk[int(zk.size/2):]
@@ -89,13 +97,14 @@ else:
     fl.swmr_mode = True
     save_data(fl,'data',ext_flag=False,x=x,y=y,kap=kap,C=C,nu=nu,D=D)
 
-fsave = lambda t,y : save_callback(fl,t,y)
-
+fsave = [(lambda t,y : save_callback(fl,t,y,flag='fields')),
+         (lambda t,y : save_callback(fl,t,y,flag='energies'))]
+dtsave = [1.0,0.5]
 #r=gensolver('scipy.DOP853',rhs,t0,zk0,t1,fsave=fsave,dtstep=dtstep,dtshow=dtshow,dtsave=dtsave,rtol=1e-9,atol=1e-10)
 #r=gensolver('julia.KenCarp4(autodiff=false,linsolve = KrylovJL_GMRES())',rhsexp,t0,zk0,t1,fimp=rhsimp,fsave=fsave,dtstep=dtstep,dtshow=dtshow,dtsave=dtsave,reltol=1e-9,abstol=1e-10)
 #r=gensolver('julia.BS3()',rhs,t0,zk0,t1,fsave=fsave,dtstep=dtstep,dtshow=dtshow,dtsave=dtsave,reltol=1e-9,abstol=1e-10)
-r=gensolver('julia.Tsit5()',rhs,t0,zk0,t1,fsave=fsave,dtstep=dtstep,dtshow=dtshow,dtsave=dtsave,reltol=1e-9,abstol=1e-10)
-#r=gensolver('julia.lsoda()',rhs,t0,zk0,t1,fsave=fsave,dtstep=dtstep,dtshow=dtshow,dtsave=dtsave,reltol=1e-9,abstol=1e-10)
+#r=gensolver('julia.Tsit5()',rhs,t0,zk0,t1,fsave=fsave,dtstep=dtstep,dtshow=dtshow,dtsave=dtsave,reltol=1e-9,abstol=1e-10)
+r=gensolver('julia.RDPK3SpFSAL510()',rhs,t0,zk0,t1,fsave=fsave,dtstep=dtstep,dtshow=dtshow,dtsave=dtsave,reltol=1e-9,abstol=1e-10)
 #r=gensolver('cupy_ivp.DOP853',rhs,t0,zk0,t1,fsave=fsave,dtstep=dtstep,dtshow=dtshow,dtsave=dtsave,rtol=1e-9,atol=1e-10)
 r.run()
 fl.close()
