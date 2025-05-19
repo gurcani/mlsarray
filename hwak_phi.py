@@ -8,15 +8,17 @@ Created on Wed Apr 17 10:19:37 2024
 
 import cupy as xp
 import numpy as np
-import gc
 from mlsarray import mlsarray,slicelist,init_kspace_grid,rfft2
 from gensolver import gensolver
 import h5py as h5
+import os
 
 tilde = lambda x : (x-xp.mean(x,axis=-1))
 
 Npx,Npy=2048,2048
-t0,t1=0,1000
+flname='out.h5'
+
+t0,t1=0,10
 dtstep,dtshow,dtsave=0.01,0.01,0.1
 wecontinue=False
 Nx,Ny=2*int(np.floor(Npx/3)),2*int(np.floor(Npy/3))
@@ -29,8 +31,6 @@ w=10.0
 phik=1e-4*xp.exp(-lkx**2/2/w**2-lky**2/w**2)*xp.exp(1j*2*np.pi*xp.random.rand(lkx.size).reshape(lkx.shape));
 nk=1e-4*xp.exp(-lkx**2/w**2-lky**2/w**2)*xp.exp(1j*2*np.pi*xp.random.rand(lkx.size).reshape(lkx.shape));
 zk=np.hstack((phik,nk))
-del lkx,lky
-gc.collect()
 xl,yl=np.arange(0,Lx,Lx/Npx),np.arange(0,Ly,Ly/Npy)
 x,y=xp.meshgrid(xp.array(xl),xp.array(yl),indexing='ij')
 kap0=1.0
@@ -93,7 +93,7 @@ def save_callback(fl,t,y):
     phik,nk=zk[:int(zk.size/2)],zk[int(zk.size/2):]
     om=irft(-phik*(kx**2+ky**2))
     n=irft(nk)
-    save_data(fl,'fields',ext_flag=True,om=om.get(),n=n.get(),t=t.get())
+    save_data(fl,'fields',ext_flag=True,om=om.get(),n=n.get(),t=t)
 
 def rhs(t,y):
     zk=y.view(dtype=complex)
@@ -122,10 +122,12 @@ if(wecontinue):
     t0=fl['fields/t'][-1]
     zk=np.hstack((phik,nk))
 else:
-    fl=h5.File('out.h5','w',libver='latest')
+    if os.path.exists(flname):
+        os.remove(flname)
+    fl=h5.File(flname,'w',libver='latest')
     fl.swmr_mode = True
     save_data(fl,'data',ext_flag=False,x=x.get(),y=y.get(),kap_x=kap_x.get(),C_x=C_x.get(),nu_x=nu_x.get(),D_x=D_x.get())
 fsave=lambda t,y : save_callback(fl,t,y)
-r=gensolver('cupy_ivp.DOP853',rhs,t0,zk.view(dtype=float),t1,fsave=fsave,dtstep=dtstep,dtshow=dtshow,dtsave=dtsave,rtol=1e-9,atol=1e-10)
+r=gensolver('cupy_ivp.DOP853',rhs,t0,zk.view(dtype=float),t1,fsave=fsave,dtstep=dtstep,dtshow=dtshow,dtsave=dtsave,dense_output=True,rtol=1e-9,atol=1e-10)
 r.run()
 fl.close()
