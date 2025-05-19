@@ -40,7 +40,7 @@ def save_data(fl,grpname,ext_flag,**kwargs):
         fl.flush()
 
 class gensolver:    
-    def __init__(self,solver,f,t0,y0,t1,fsave,fshow=None,fy=None,dtstep=0.1,dtshow=None,dtsave=None,dtfupdate=None,force_update=None,dense_output=False,**kwargs):
+    def __init__(self,solver,f,t0,y0,t1,fsave,fshow=None,fy=None,dtstep=0.1,dtshow=None,dtsave=None,dtfupdate=None,force_update=None,dense=False,**kwargs):
 
         svs=solver.split(".")
         print(kwargs)        
@@ -71,13 +71,9 @@ class gensolver:
             r.integrate=integrate
         self.r=r
 
-#        if(callable(fsave)):
-#            self.fsave=[lambda t,y : fsave(t.get() if (svs[0]=='cupy_ivp' and not dense_output) else t,y) ,]
-#        else:
-#            self.fsave=[lambda t,y,fl=fl : fl( (t.get() if (svs[0]=='cupy_ivp' and not dense_output) else t),y) for fl in fsave]
         self.dtstep,self.dtshow,self.dtsave=dtstep,dtshow,dtsave
         self.t0,self.t1=t0,t1
-        self.dense_output=dense_output
+        self.dense=dense
         if(not(fy is None) and not(force_update is None)):
             self.fy=fy
             self.force_update=force_update
@@ -101,7 +97,7 @@ class gensolver:
         tnext=t0+dtstep
         tshownext=t0+dtshow
         tsavenext=np.array([t0+dt for dt in dtsave])
-        tifd = lambda t,td : td if(hasattr(self,'dense_output') and self.dense_output) else t
+        tifd = lambda t,td : td if(hasattr(self,'dense') and self.dense) else t
 
         if('dtfupdate' in self.__dict__.keys()):
             dtfupdate=self.dtfupdate
@@ -122,7 +118,7 @@ class gensolver:
                 tshownext=tshownext+dtshow
             for l in range(len(dtsave)):
                 if(t>=tsavenext[l]):
-                    if(hasattr(self,'dense_output') and self.dense_output):
+                    if(hasattr(self,'dense') and self.dense):
                         self.fsave[l](tsavenext[l],r.dense_output()(tsavenext[l]))
                     else:
                         self.fsave[l](t,r.y)
