@@ -60,12 +60,10 @@ class gensolver:
             import scipy.integrate as scpint
             svf=getattr(scpint,svs[1])
             r=svf(f,t0,y0,t1,max_step=dtstep,**kwargs)
-            self.get = lambda x : x
         if svs[0]=='cupy_ivp':
             from . import cupy_ivp as cpi
             svf=getattr(cpi,svs[1])
             r=svf(f,t0,y0,t1,max_step=dtstep,**kwargs)
-            self.get = lambda x : x.get()
         if not hasattr(r, 'integrate'):
             def integrate(tnext):
                 while(r.t<tnext):
@@ -111,7 +109,7 @@ class gensolver:
         Nrnd=int(-np.log10(min(dtstep,dtshow,min(dtsave))/100))
         while(t<t1):
             r.integrate(tnext)
-            t=self.get(t)*1.0
+            t=r.t.item()
             tnext=tnext+dtstep
             if(not(dtfupdate is None)):
                 if(t>=tnextfupdate):
