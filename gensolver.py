@@ -111,7 +111,7 @@ class gensolver:
         Nrnd=int(-np.log10(min(dtstep,dtshow,min(dtsave))/100))
         while(t<t1):
             r.integrate(tnext)
-            t=self.get(r.t)
+            t=self.get(t)*1.0
             tnext=tnext+dtstep
             if(not(dtfupdate is None)):
                 if(t>=tnextfupdate):
