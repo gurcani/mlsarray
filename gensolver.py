@@ -60,11 +60,12 @@ class gensolver:
             import scipy.integrate as scpint
             svf=getattr(scpint,svs[1])
             r=svf(f,t0,y0,t1,max_step=dtstep,**kwargs)
+            self.get = lambda x : x
         if svs[0]=='cupy_ivp':
             from . import cupy_ivp as cpi
             svf=getattr(cpi,svs[1])
             r=svf(f,t0,y0,t1,max_step=dtstep,**kwargs)
-
+            self.get = lambda x : x.get()
         if not hasattr(r, 'integrate'):
             def integrate(tnext):
                 while(r.t<tnext):
@@ -72,10 +73,10 @@ class gensolver:
             r.integrate=integrate
         self.r=r
 
-        if(callable(fsave)):
-            self.fsave=[lambda t,y : fsave(t.get() if (svs[0]=='cupy_ivp' and not dense_output) else t,y) ,]
-        else:
-            self.fsave=[lambda t,y,fl=fl : fl( (t.get() if (svs[0]=='cupy_ivp' and not dense_output) else t),y) for fl in fsave]
+#        if(callable(fsave)):
+#            self.fsave=[lambda t,y : fsave(t.get() if (svs[0]=='cupy_ivp' and not dense_output) else t,y) ,]
+#        else:
+#            self.fsave=[lambda t,y,fl=fl : fl( (t.get() if (svs[0]=='cupy_ivp' and not dense_output) else t),y) for fl in fsave]
         self.dtstep,self.dtshow,self.dtsave=dtstep,dtshow,dtsave
         self.t0,self.t1=t0,t1
         self.dense_output=dense_output
@@ -110,7 +111,7 @@ class gensolver:
         Nrnd=int(-np.log10(min(dtstep,dtshow,min(dtsave))/100))
         while(t<t1):
             r.integrate(tnext)
-            t=r.t
+            t=self.get(r.t)
             tnext=tnext+dtstep
             if(not(dtfupdate is None)):
                 if(t>=tnextfupdate):
