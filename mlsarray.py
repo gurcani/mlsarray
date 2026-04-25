@@ -35,14 +35,6 @@ class mlsarray(xp.ndarray):
                 self[l]=value.ravel()[j].reshape(shp)
         else:
             xp.ndarray.__setitem__(self,key,value)
-    def irfft2(self):
-        self.view(dtype=float)[:,:-2]=irfft2(self,norm='forward',overwrite_x=True)
-    def rfft2(self):
-        self[:,:]=rfft2(self.view(dtype=float)[:,:-2],norm='forward',overwrite_x=True)
-    def ifftx(self):
-        self[:,:]=ifft(self,norm='forward',overwrite_x=True,axis=0)
-    def fftx(self):
-        self[:,:]=fft(self,norm='forward',overwrite_x=True,axis=0)
         
 def init_kspace_grid(sl):
     Nx,Ny=sl.shape
@@ -52,12 +44,3 @@ def init_kspace_grid(sl):
     kx=xp.hstack([kx[l].ravel() for l in sl.insl])
     ky=xp.hstack([ky[l].ravel() for l in sl.insl])
     return kx,ky
-
-# Npx,Npy=1024,1024
-# Nx,Ny=int(np.floor(Npx/3))*2,int(np.floor(Npy/3))
-# Nxh=int(Nx/2)
-# Nyhp=int(Ny/2)+1
-# Lx,Ly=2*np.pi,2*np.pi
-# sl=slicelist(Nx,Ny)
-# kx,ky=init_kspace_grid(sl)
-# a=mlsarray(Nx,Ny)
