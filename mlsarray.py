@@ -7,18 +7,22 @@ Created on Tue Apr 16 16:28:38 2024
 """
 
 import cupy as xp
+#import numpy as xp
 import numpy as np
 from cupyx.scipy.fft import rfft2,irfft2,fft,ifft
 #from scipy.fft import rfft2,irfft2
 
+get = lambda x : x.get() if (('cupy' in str(type(x))) or ('cupy' in str(x.__class__.__base__)))  else x
+
 class slicelist:
     def __init__(self,Nx,Ny):
         shp=(Nx,Ny)
+        pshp=(int(np.ceil((Nx*3/2)/2)*2),int(np.ceil((Ny*3/2)/2)*2))
         insl=[np.s_[0:1,1:int(Ny/2)],np.s_[1:int(Nx/2),:int(Ny/2)],np.s_[-int(Nx/2)+1:,1:int(Ny/2)]]
         shps=[[len(range(*(l[j].indices(shp[j])))) for j in range(len(l))] for l in insl]
         Ns=[np.prod(l) for l in shps]
         outsl=[np.s_[sum(Ns[:l]):sum(Ns[:l])+Ns[l]] for l in range(len(Ns))]
-        self.insl,self.shape,self.shps,self.Ns,self.outsl=insl,shp,shps,Ns,outsl
+        self.insl,self.shape,self.shps,self.Ns,self.outsl,self.pshp=insl,shp,shps,Ns,outsl,pshp
 
 class mlsarray(xp.ndarray):
     def __new__(cls,Nx,Ny):
@@ -44,3 +48,14 @@ def init_kspace_grid(sl):
     kx=xp.hstack([kx[l].ravel() for l in sl.insl])
     ky=xp.hstack([ky[l].ravel() for l in sl.insl])
     return kx,ky
+
+def irft2(uk,sl):
+    u=mlsarray(*sl.pshp)
+    u[sl]=uk
+    u[-1:-int(sl.shape[0]/2):-1,0]=u[1:int(sl.shape[0]/2),0].conj()
+    u.view(dtype=float)[:,:-2]=irfft2(u,norm='forward',overwrite_x=True)
+    return u.view(dtype=float)[:,:-2]
+
+def rft2(u,sl):
+    uk=rfft2(u,norm='forward',overwrite_x=True).view(type=mlsarray)
+    return np.hstack(uk[sl])
