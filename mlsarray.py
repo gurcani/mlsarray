@@ -5,14 +5,23 @@ Created on Tue Apr 16 16:28:38 2024
 
 @author: ogurcan
 """
-
-import cupy as xp
-#import numpy as xp
+import os
+import sys
 import numpy as np
-from cupyx.scipy.fft import rfft2,irfft2,fft,ifft
-#from scipy.fft import rfft2,irfft2
 
 get = lambda x : x.get() if (('cupy' in str(type(x))) or ('cupy' in str(x.__class__.__base__)))  else x
+
+match os.environ.get('MLSARRAY_BACKEND'):
+    case "cupy":
+        import cupy as xp
+        from cupyx.scipy.fft import rfft2,irfft2
+    case "numpy":
+        xp=np
+        from scipy.fft import rfft2,irfft2
+    case _:
+        print("unknown backend: using numpy")
+        xp=np
+        from scipy.fft import rfft2,irfft2
 
 class slicelist:
     def __init__(self,Nx,Ny):
